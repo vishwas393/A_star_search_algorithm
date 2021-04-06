@@ -37,10 +37,11 @@ class graph {
 	node src, dest;
 	std::vector<node> OPEN;
 	std::vector<node> CLOSED;
-	std::array<float, R*C> past_cost;
+	std::vector<node> PATH;
+	int past_cost[R][C];
 
 	
-	void initialize_search_params(void);
+	bool initialize_search_params(void);
 	bool start_search(void);
 	bool is_not_obstacle(node a);
 
