@@ -30,6 +30,7 @@ bool graph::is_not_obstacle(node a)
 		return false;
 }
 
+
 static std::vector<node> return_all_neighbours(node c)
 {
 	std::vector<node> n;
@@ -61,6 +62,17 @@ static std::vector<node> return_all_neighbours(node c)
 }
 
 /***********************************************************************************/
+void graph::print_path(void)
+{
+	std::cout << "Source" << std::setw(7) << "(" << src.coords.first << "," << src.coords.second << ")" << std::endl;
+	std::cout << "Destination" << std::setw(2) << "(" << dest.coords.first << "," << dest.coords.second << ")" << std::endl;
+	std::cout << "Total nodes" << std::setw(2) <<PATH.size() << std::endl;
+	for(int i=0; i<PATH.size(); i++)
+	{
+		std::cout << "(" << PATH.at(i).coords.first << "," << PATH.at(i).coords.second << ")" << std::endl;
+	}
+}
+
 
 bool graph::initialize_search_params(void)
 {
@@ -94,7 +106,6 @@ bool graph::start_search(void)
 
 		if(curr == dest)
 		{
-			std::cout << "You have Reached your Destination!" << std::endl;
 			return true;
 		}
 		
@@ -106,6 +117,7 @@ bool graph::start_search(void)
 		for(std::vector<node>::const_iterator itr = nbr_lst.begin(); itr != nbr_lst.end(); itr++)
 		{
 			node nbr = *itr;
+			float etc = 100;
 			//std::cout << std::endl << nbr.coords.first << " " << nbr.coords.second;
 			it = std::find(CLOSED.begin(), CLOSED.end(), nbr); 
 			if(it == CLOSED.end() && is_not_obstacle(nbr))
@@ -116,27 +128,22 @@ bool graph::start_search(void)
 				{
 					past_cost[nbr.coords.first][nbr.coords.second] = tentative_past_cost;
 					nbr.p_coords = curr.coords;
-					float etc = past_cost[nbr.coords.first][nbr.coords.second] + euclidean_cost(dest, nbr);
+					etc = past_cost[nbr.coords.first][nbr.coords.second] + euclidean_cost(dest, nbr);
 					//std::cout << " etc: " << etc;
-					est_total_cost.push_back(etc);
-				}
-				else {
-					est_total_cost.push_back(100);
 				}
 			}
-			else{
-				est_total_cost.push_back(100);
-			}
+			est_total_cost.push_back(etc);
 		}
 		
 		
 		float tmp = *std::min_element(est_total_cost.begin(), est_total_cost.end());
-		int idx = std::find(est_total_cost.begin(), est_total_cost.end(), tmp) - est_total_cost.begin();
-		//std::cout << nbr_lst.at(idx).coords.first << " " <<nbr_lst.at(idx).coords.second << std::endl;
-		OPEN.push_back(nbr_lst.at(idx));
-		PATH.push_back(nbr_lst.at(idx));
-		std::cout << std::endl << nbr_lst.at(idx).coords.first << ", " << nbr_lst.at(idx).coords.second << std::endl;
-			cnt++;
+		if(tmp != 100){
+			int idx = std::find(est_total_cost.begin(), est_total_cost.end(), tmp) - est_total_cost.begin();
+			//std::cout << nbr_lst.at(idx).coords.first << " " <<nbr_lst.at(idx).coords.second << std::endl;
+			OPEN.push_back(nbr_lst.at(idx));
+			PATH.push_back(nbr_lst.at(idx));
+			//std::cout << std::endl << nbr_lst.at(idx).coords.first << ", " << nbr_lst.at(idx).coords.second << std::endl;
+		}
 	}
 	return false;
 }
@@ -146,16 +153,16 @@ bool graph::start_search(void)
 int main(int argc, char **argv)
 {
 	int map_ext[R][C] = {
-		{1,1,1,1,1,1,1,1,1,1},
+		{1,1,1,1,1,1,1,0,0,1},
+		{1,1,1,1,1,1,1,0,0,1},
 		{1,0,0,1,1,1,1,0,0,1},
 		{1,0,0,1,1,1,1,0,0,1},
-		{1,1,1,1,1,1,1,1,1,1},
-		{1,1,1,1,1,1,1,1,1,1},
-		{1,1,1,1,1,1,1,1,1,1},
-		{1,1,1,1,1,1,1,1,1,1},
+		{1,1,1,1,1,1,1,0,0,1},
+		{1,1,1,1,1,1,1,0,0,1},
+		{1,1,1,1,1,1,1,0,0,1},
 		{1,0,0,1,1,1,1,0,0,1},
 		{1,0,0,1,1,1,1,0,0,1},
-		{1,1,1,1,1,1,1,1,1,1}
+		{1,1,1,1,1,1,1,0,0,1}
 	};
 
 	node d(atoi(argv[3]),atoi(argv[4]));
@@ -164,7 +171,11 @@ int main(int argc, char **argv)
 	graph astar_graph(map_ext, s, d); 
 	if(astar_graph.initialize_search_params())
 	{
-		astar_graph.start_search();
+		if(astar_graph.start_search()) {
+			astar_graph.print_path();
+		}
+		else {
+			std::cout << "No Path possible to reach to the destination!" << std::endl;
+		}
 	}
-	std::cout << "Total Nodes: " << astar_graph.PATH.size() << std::endl;
 }

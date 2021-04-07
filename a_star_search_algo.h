@@ -44,6 +44,7 @@ class graph {
 	bool initialize_search_params(void);
 	bool start_search(void);
 	bool is_not_obstacle(node a);
+	void print_path(void);
 
 };
 
