@@ -15,4 +15,4 @@ As an example input values, enter
 
 You will see output as below: 
 
-![A_star_algo_output](https://github.com/vishwas393/A_star_search_algorithm/tree/master/img/output_img.png?raw=true "A star algo output")
+![A_star_algo_output](https://github.com/vishwas393/A_star_search_algorithm/blob/master/img/output_img.png?graw=true "A star algo output")
