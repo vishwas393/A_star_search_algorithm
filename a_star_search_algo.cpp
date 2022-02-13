@@ -1,9 +1,30 @@
 #include <bits/stdc++.h>
+#include <stdlib.h>
 #include "a_star_search_algo.h"
 
-#define R 10
-#define C 10
+#define RESET   	"\033[0m"
+#define BLACK   	"\033[30m"      	/* Black */
+#define RED     	"\033[31m"      	/* Red */
+#define GREEN   	"\033[32m"      	/* Green */
+#define YELLOW  	"\033[33m"      	/* Yellow */
+#define BLUE    	"\033[34m"      	/* Blue */
+#define MAGENTA 	"\033[35m"      	/* Magenta */
+#define CYAN    	"\033[36m"      	/* Cyan */
+#define WHITE   	"\033[37m"      	/* White */
+#define BOLDBLACK   	"\033[1m\033[30m"      	/* Bold Black */
+#define BOLDRED     	"\033[1m\033[31m"      	/* Bold Red */
+#define BOLDGREEN   	"\033[1m\033[32m"      	/* Bold Green */
+#define BOLDYELLOW  	"\033[1m\033[33m"      	/* Bold Yellow */
+#define BOLDBLUE    	"\033[1m\033[34m"      	/* Bold Blue */
+#define BOLDMAGENTA 	"\033[1m\033[35m"      	/* Bold Magenta */
+#define BOLDCYAN    	"\033[1m\033[36m"      	/* Bold Cyan */
+#define BOLDWHITE   	"\033[1m\033[37m"      	/* Bold White */
 
+
+#define R 30
+#define C 52
+
+int total_itr_cnt = 0;
 
 /***********************************  UTILITIES  *************************************/
 bool operator== (const node &T1, const node &T2)
@@ -15,18 +36,17 @@ bool operator== (const node &T1, const node &T2)
 }
 
 
-static float euclidean_cost(node c, node n)
+static double heuristic_cost(node c, node n)
 {
-	float dist = sqrt(pow((c.coords.first - n.coords.first), 2) + pow((c.coords.second - n.coords.second), 2));
+	double dist = sqrt(pow((c.coords.first - n.coords.first), 2) + pow((c.coords.second - n.coords.second), 2));
 	return dist;
 }
-
 
 bool graph::is_not_obstacle(node a)
 {
 	if(map[a.coords.first][a.coords.second] == 1 && a.coords.first>=0 && a.coords.second>=0 && a.coords.first<R && a.coords.second<C)
 		return true;
-	else;
+	else
 		return false;
 }
 
@@ -61,16 +81,30 @@ static std::vector<node> return_all_neighbours(node c)
 	return n;
 }
 
+
+bool least_cost_comp(node a, node b)
+{
+	return (a.est_t_cost < b.est_t_cost);
+}
+
 /***********************************************************************************/
-void graph::print_path(void)
+void graph::prepare_path(void)
 {
 	std::cout << "Source" << std::setw(7) << "(" << src.coords.first << "," << src.coords.second << ")" << std::endl;
 	std::cout << "Destination" << std::setw(2) << "(" << dest.coords.first << "," << dest.coords.second << ")" << std::endl;
-	std::cout << "Total nodes" << std::setw(2) <<PATH.size() << std::endl;
-	for(int i=0; i<PATH.size(); i++)
+	
+	node* temp = &nodes[CLOSED.at(CLOSED.size()-1).coords.first][CLOSED.at(CLOSED.size()-1).coords.second];
+	
+	while(temp->parent != NULL)
 	{
-		std::cout << "(" << PATH.at(i).coords.first << "," << PATH.at(i).coords.second << ")" << std::endl;
+		//std::cout << "(" << temp->coords.first << "," << temp->coords.second << ")" << std::endl;
+		final_path.push_back(*temp);
+		temp = temp->parent; 
 	}
+	//std::cout << "(" << temp->coords.first << "," << temp->coords.second << ")" << std::endl;
+	final_path.push_back(*temp);
+
+	std::reverse(final_path.begin(), final_path.end());
 }
 
 
@@ -78,104 +112,162 @@ bool graph::initialize_search_params(void)
 {
 	if(is_not_obstacle(src) && is_not_obstacle(dest))
 	{
-		OPEN.push_back(src);
-		PATH.push_back(src);
-		//std::fill(past_cost.begin(), past_cost.end(), 1000);
-		memset(past_cost, 1, sizeof(int)*R*C);
-		past_cost[src.coords.first][src.coords.second] = 0;
+		for(int i=0; i<R; i++)
+		{
+			for(int j=0; j<C; j++)
+			{
+				node a(i,j);
+				nodes[i][j] = a;
+			}
+		}
+
+		nodes[src.coords.first][src.coords.second].parent = NULL;
+		OPEN.push_back(nodes[src.coords.first][src.coords.second]);
+		
 		return true;
 	}
-	std::cout << "Wrong Destination or Source Provided!" << std::endl;;
-	return false;
+	else
+		return false;
 }
 
 
 bool graph::start_search(void)
 {
-	int cnt=0;
-	while(!OPEN.empty())
+	while(OPEN.size() != 0)
 	{
-		float tentative_past_cost;
-		node curr;
+		node curr = OPEN.at(0);
 
-		curr = OPEN.front();
-		OPEN.erase(OPEN.end());
+		OPEN.erase(OPEN.begin());
 		CLOSED.push_back(curr);
 		
-		
+		//std::cout << curr.coords.first << "," << curr.coords.second << "," << std::endl; 
 
-		if(curr == dest)
-		{
+		if(curr == dest) { 
 			return true;
 		}
-		
-		
-		std::vector<node> nbr_lst = return_all_neighbours(curr);
-		std::vector<float> est_total_cost;
-		//std::fill(est_total_cost.begin(), est_total_cost.end(), 1000);
-		std::vector<node>::iterator it;
-		for(std::vector<node>::const_iterator itr = nbr_lst.begin(); itr != nbr_lst.end(); itr++)
+
+		std::vector<node> nbr_nodes = return_all_neighbours(curr);
+
+		for(std::vector<node>::iterator itr=nbr_nodes.begin(); itr!=nbr_nodes.end(); itr++)
 		{
-			node nbr = *itr;
-			float etc = 100;
-			//std::cout << std::endl << nbr.coords.first << " " << nbr.coords.second;
-			it = std::find(CLOSED.begin(), CLOSED.end(), nbr); 
-			if(it == CLOSED.end() && is_not_obstacle(nbr))
+			
+			if( std::find(CLOSED.begin(), CLOSED.end(), *itr) == CLOSED.end() && is_not_obstacle(*itr) )
 			{
-				tentative_past_cost = past_cost[curr.coords.first][curr.coords.second] + euclidean_cost(curr,nbr);
-				//std::cout << " TPC: " <<tentative_past_cost << " PC: " << past_cost[nbr.coords.first][nbr.coords.second];
-				if(tentative_past_cost < past_cost[nbr.coords.first][nbr.coords.second])
+				double tentative_past_cost = past_cost[curr.coords.first][curr.coords.second] + heuristic_cost(curr, *itr);
+				if(tentative_past_cost < past_cost[itr->coords.first][itr->coords.second])
 				{
-					past_cost[nbr.coords.first][nbr.coords.second] = tentative_past_cost;
-					nbr.p_coords = curr.coords;
-					etc = past_cost[nbr.coords.first][nbr.coords.second] + euclidean_cost(dest, nbr);
-					//std::cout << " etc: " << etc;
+					past_cost[itr->coords.first][itr->coords.second] = tentative_past_cost;
+					nodes[itr->coords.first][itr->coords.second].est_t_cost = past_cost[itr->coords.first][itr->coords.second] + heuristic_cost(dest, *itr);
+					nodes[itr->coords.first][itr->coords.second].p_coords.first = curr.coords.first;
+					nodes[itr->coords.first][itr->coords.second].p_coords.second = curr.coords.second;
+
+					nodes[itr->coords.first][itr->coords.second].parent = &nodes[curr.coords.first][curr.coords.second];
+			
+					OPEN.push_back(nodes[itr->coords.first][itr->coords.second]);
+					std::sort(OPEN.begin(), OPEN.end(), least_cost_comp);
+					total_itr_cnt++;
 				}
 			}
-			est_total_cost.push_back(etc);
-		}
-		
-		
-		float tmp = *std::min_element(est_total_cost.begin(), est_total_cost.end());
-		if(tmp != 100){
-			int idx = std::find(est_total_cost.begin(), est_total_cost.end(), tmp) - est_total_cost.begin();
-			//std::cout << nbr_lst.at(idx).coords.first << " " <<nbr_lst.at(idx).coords.second << std::endl;
-			OPEN.push_back(nbr_lst.at(idx));
-			PATH.push_back(nbr_lst.at(idx));
-			//std::cout << std::endl << nbr_lst.at(idx).coords.first << ", " << nbr_lst.at(idx).coords.second << std::endl;
 		}
 	}
+
+
 	return false;
 }
 
 
-
-int main(int argc, char **argv)
+void graph::print_graph_array(int arr[][C], std::vector<node> p)
 {
-	int map_ext[R][C] = {
-		{1,1,1,1,1,1,1,0,0,1},
-		{1,1,1,1,1,1,1,0,0,1},
-		{1,0,0,1,1,1,1,0,0,1},
-		{1,0,0,1,1,1,1,0,0,1},
-		{1,1,1,1,1,1,1,0,0,1},
-		{1,1,1,1,1,1,1,0,0,1},
-		{1,1,1,1,1,1,1,0,0,1},
-		{1,0,0,1,1,1,1,0,0,1},
-		{1,0,0,1,1,1,1,0,0,1},
-		{1,1,1,1,1,1,1,0,0,1}
-	};
+	for(int i=0; i< R; i++) {
+		for (int j=0; j<C; j++) {
+			node a(i,j);
+			if(std::find(p.begin(), p.end(), a) != p.end())
+				std::cout << BOLDGREEN;
+			else
+				std::cout << RESET;
+			std::cout << " " << arr[i][j];
+		}
+		std::cout << std::endl;
+	}
+}
 
-	node d(atoi(argv[3]),atoi(argv[4]));
-	node s(atoi(argv[1]),atoi(argv[2]));
+
+std::vector<node> path_planning_fn(std::pair<int, int> si, std::pair<int, int> di)
+{
+	int map_ext[R][C] = 
+{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, }, 
+ {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, }, 
+ {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, }, 
+ {0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, }, 
+ {0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, }, 
+ {0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, }, 
+ {0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, }, 
+ {0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, }, 
+ {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, }, 
+ {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, }, 
+ {0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, }, 
+ {0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, }, 
+ {0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, }, 
+ {0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, }, 
+ {0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, }, 
+ {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, }, 
+ {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, }, 
+ {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, }, 
+ {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, }, 
+ {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, }, 
+ {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, }, 
+ {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, }, 
+ {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, }, 
+ {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, }, 
+ {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, }, 
+ {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, }, 
+ {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, }, 
+ {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, }, 
+ {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, }, 
+ {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, }};
+ 
+ 	node d(di.first, di.second);
+	node s(si.first, si.second);
 
 	graph astar_graph(map_ext, s, d); 
+
+
+
 	if(astar_graph.initialize_search_params())
 	{
 		if(astar_graph.start_search()) {
-			astar_graph.print_path();
+			astar_graph.prepare_path();
 		}
 		else {
 			std::cout << "No Path possible to reach to the destination!" << std::endl;
 		}
 	}
+	else
+	{
+			std::cout << "Invalid source or destination!" << std::endl;
+	}
+
+	
+	std::cout << "Total Iterations performed: " << total_itr_cnt << std::endl;
+	astar_graph.print_graph_array(map_ext, astar_graph.final_path);
+	return astar_graph.final_path;
+}
+
+
+int main(void)
+{
+	std::pair<int, int> s, e;
+	std::cout << "Map size: " << R << "x" << C << std::endl;
+	std::cout << "Start point X: ";
+	std::cin >> s.first;
+	std::cout << "Start point Y: ";
+	std::cin >> s.second;
+	std::cout << "End point X: ";
+	std::cin >> e.first;
+	std::cout << "End point Y: ";
+	std::cin >> e.second;
+	std::cout << std::endl << std::endl;
+
+	std::vector<node> p = path_planning_fn(s, e);
+
 }
